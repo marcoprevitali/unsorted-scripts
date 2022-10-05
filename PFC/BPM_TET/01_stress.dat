@@ -1,0 +1,65 @@
+model restore 'geom_init'
+; Specify the material properties. The SimpleBBM example
+; can be used to calibrate a specimen.  
+[density = 2650.0]
+[young = 50.0e9]
+[poisson = 0.25]
+[tensileStrength = 2.e7]
+[cohesionFactor = 2.4]
+[emod = 7.25e10] 
+[topOfModel = 0] ; per overconsolidare
+
+; Set the rigid block damping and density
+rblock attribute density [density] damp 0.7
+rblock scale relative 1.01 keep-inertial
+; Use the contact area
+rblock contact-resolution update-area true
+
+; Specify the softbond model properties. Initially
+; all bonded contacts have infinite strength. This is 
+; useful when equilibrating the model. 
+contact cmat default type rblock-rblock model softbond method deformability emod [emod] ...
+                           kratio 2.0 ...
+                           property sb_ten 1e100 sb_coh 1e100 ...
+                           sb_fa 30.0 fric 0.5 sb_mode 1
+                                    
+
+; Turn on gravity
+;model gravity 0 0 -9.8
+
+rblock fix velocity spin
+model large-strain on
+
+model mechanical timestep fix 1e-8
+model cyc 1
+
+; Ensure that the contact areas are unchanged
+contact method area
+
+; Inhibit contacts, checking if they should be reactivated every
+; 1000 cycles
+rblock contact-resolution inhibit-contacts inhibit-interval 1000
+
+; Bond the contacts where rigid blocks overlap
+contact method bond range contact active
+
+; Now erode the rigid blocks, removing edge-edge and vertex-vertex.
+; This is important as it will greatly increase computational efficiency.
+; These contacts do not contribute to the response of the bonded material. 
+rblock erode relative 0.1 skip-errors
+;; Specify the stress
+;rblock tractions overburden [(topOfModel)*density*9.81] ...
+;                         ratio 3.0 1.6 direction-x 1.0 0 0 contact-active false
+
+; Free the rigid blocks and zones
+rblock free velocity spin
+
+; Fix the boundary rblocks and zones
+;rblock fix velocity range group 'boundary'
+
+
+; Solve to an average ratio
+model solve ratio-average 1e-5
+
+
+model save 'stressed'

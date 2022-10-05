@@ -1,0 +1,41 @@
+model restore 'stressed'
+rblock delete range group 'cut'
+rblock delete range group 'sliver' slot 'sliver'
+
+[vel = 1]
+
+contact cmat default type rblock-facet model linear method deformability emod [emod] ...
+                           kratio 2.0 ...
+                           property fric 0.5 
+                                    
+
+contact cmat apply
+[shaft = wall.find(1)]
+[base = wall.find(2)]
+
+wall attribute velocity-z @vel
+
+
+def export_stuff
+
+loop foreach c wall.contactmap(shaft)
+force_shaft = force_shaft + comp.z(contact.force.global(c))*comp.z(contact.branch(c))
+endloop
+
+loop foreach c wall.contactmap(base)
+force_base = force_base +  comp.z(contact.force.global(c))*comp.z(contact.branch(c))
+endloop
+
+displ = wall.disp.z(shaft)
+
+end
+
+@export_stuff
+
+hist @force_shaft
+hist @force_base
+hist @displ
+
+fish callback add @export_stuff -12.0
+
+model cy 100000000

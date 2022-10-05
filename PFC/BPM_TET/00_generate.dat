@@ -1,0 +1,142 @@
+model new
+[cone_rad1 = 0.5]
+[cone_rad2 = 1.0]
+[cone_height = 1.5]
+[cyl_height = 2]
+[domain_x = 0.125]
+[domain_y = 0.125]
+[domain_depth = 3]
+[maxEdge = 0.5]
+
+model domain extent [-domain_x*3] [domain_x*3] [-domain_y*3] [domain_y*3] [-domain_depth*3] [domain_depth*3] 
+;
+;geometry set 'cut'
+;
+;geometry generate cylinder base 0 0 [-cyl_height] radius [cone_rad1] ...
+;                  height [cyl_height] axis 0 0 1 resolution 0.4 
+;                  
+;wall generate cylinder base 0 0 [-cyl_height] radius [cone_rad1] ...
+;    height [cyl_height+1e-3] axis 0 0 1 resolution 0.4
+;
+;geometry generate cone base 0 0 [-cyl_height-cone_height] radius [cone_rad2] [cone_rad1] ...
+;                  height [cone_height] axis 0 0 1 resolution 0.4
+;
+;wall generate cone base 0 0 [-cyl_height-cone_height] radius [cone_rad2] [cone_rad1] ...
+;                  height [cone_height] axis 0 0 1 resolution 0.4
+;
+;geometry set 'cubotto'
+;geometry generate box [-domain_x] [domain_x] [-domain_y] [domain_y] [-domain_depth] 0
+;
+;geometry node extra 1 [maxEdge]
+;
+;[lb = vector(-domain_x,-domain_y,-domain_depth)]
+;[ub = vector(domain_x,domain_y,0.0)]
+;
+
+; Create walls extending past the edges of the sample
+
+program call 'generate_tetra_gmsh.py'
+;program call '01_stress'
+;program call '03_UCT.dat'
+
+;
+;
+;
+;fish define addExtra
+;    spacing = maxEdge
+;    std = spacing/2.5
+;    num = (ub - lb) / spacing + vector(1,1,1)
+;    gs = geom.set.find("cubotto")
+;    loop i(1,int(comp.x(num))+1)
+;        xloc = comp.x(lb) + (i-1)*spacing
+;        loop j(1,int(comp.y(num))+1)
+;            yloc = comp.y(lb) + (j-1)*spacing
+;            loop k(1,int(comp.z(num))+1)
+;                zloc = comp.z(lb) + (k-1)*spacing
+;                gn = geom.node.create(gs,vector(xloc,yloc,zloc))
+;                val = (math.random.uniform() - 0.5)*2.0*std + spacing
+;                ;loop while val < spacing / 3. 
+;                ;    val = (math.random.uniform() - 0.5)*2.0*std + spacing
+;                ;endloop
+;                geom.node.extra(gn,1) = val
+;            endloop
+;        endloop
+;    endloop
+;end
+;[addExtra]
+;rblock construct from-geometry 'cubotto' maximum-edge [maxEdge] internal
+
+;rblock scale relative 1.01 keep-inertial
+[thrs = 0.12]
+;need to do this because rblocks act different for some reason?
+fish define getBoundary
+    loop foreach rb rblock.list
+        pmin = rblock.facet.vertex.pos.y(rb,1,1)
+        pmax = rblock.facet.vertex.pos.y(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,3),pmax)
+        endloop
+        if pmin < -domain_y + thrs
+            rblock.group(rb,'boundary') = 'boundary'
+        endif
+        if pmax > domain_y - thrs
+            rblock.group(rb,'boundary') = 'boundary'
+        endif
+        
+        pmin = rblock.facet.vertex.pos.x(rb,1,1)
+        pmax = rblock.facet.vertex.pos.x(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,3),pmax)
+        endloop
+        if pmin < -domain_x + thrs
+            rblock.group(rb,'boundary') = 'boundary'
+        endif
+        if pmax > domain_x - thrs
+            rblock.group(rb,'boundary') = 'boundary'
+        endif
+        
+        pmin = rblock.facet.vertex.pos.z(rb,1,1)
+        pmax = rblock.facet.vertex.pos.z(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,3),pmax)
+        endloop
+        if pmin < -domain_depth + thrs
+            rblock.group(rb,'boundary') = 'boundary'
+        endif
+
+        
+    endloop
+end
+@getBoundary
+
+; Import the geometry polygons as fractures for cutting
+;fracture import from-geometry 'cut' 
+
+; Cut the rigid blocks, making sure not to cut those not intersected 
+; by the tunnel boundary
+;rblock cut fractures 'cut' throughgoing group 'supportBlock' ... 
+;                                  intersects-box [-domain_x] [domain_x] [-domain_y] [domain_y] [-domain_depth] 0 ...
+;                                  sliver-remove false sliver-group 'sliver' slot 'sliver'
+;
+;
+;rblock group 'cut' range geometry-space 'cut' ...
+;                            count odd position-x -1 1
+
+;rblock scale relative 1.01 keep-inertial
+
+model save 'geom_init'

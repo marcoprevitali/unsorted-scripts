@@ -1,0 +1,134 @@
+model restore 'stressed'
+model large-strain on
+
+; Perform an Unconfined Compression Test on the unbonded sample
+
+; Apply loading to the sample moving top wall
+
+wall generate name 'bottom' plane position 0 0.0 -0.001
+
+wall generate name 'top' plane position 0 0.0 0.501
+
+contact cmat default type rblock-facet model linear method deformability emod [emod] ...
+                           kratio 2.0
+                           
+[vel = 10.5]
+
+wall attribute velocity-z [-vel] range set name 'top'
+wall attribute velocity-z @vel range set name 'bottom'
+
+;model mechanical timestep fix 1e-9
+; Apply a small amount of damping
+;ball attribute damp 0.1
+
+; Define the load displacement variable to plot
+wall history force-contact-z id 2
+wall history displacement-z id 1 
+fish def calc_extremities 
+min_x = 999
+max_x = -999
+min_y = 999
+max_y = -999
+min_z = 999
+max_z = -999
+    loop foreach rb rblock.list
+    
+        pmin = rblock.facet.vertex.pos.y(rb,1,1)
+        pmax = rblock.facet.vertex.pos.y(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.y(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.y(rb,i,3),pmax)
+        endloop
+        min_y = math.min(pmin,min_y)
+        max_y = math.max(pmin,max_y)
+        
+        pmin = rblock.facet.vertex.pos.x(rb,1,1)
+        pmax = rblock.facet.vertex.pos.x(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.x(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.x(rb,i,3),pmax)
+        endloop
+        
+        min_x = math.min(pmin,min_x)
+        max_x = math.max(pmin,max_x)
+
+        
+        pmin = rblock.facet.vertex.pos.z(rb,1,1)
+        pmax = rblock.facet.vertex.pos.z(rb,1,1)
+        loop i(1,rblock.facet.num(rb))
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,1),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,1),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,2),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,2),pmax)
+            pmin = math.min(rblock.facet.vertex.pos.z(rb,i,3),pmin)
+            pmax = math.max(rblock.facet.vertex.pos.z(rb,i,3),pmax)
+        endloop
+        
+        min_z = math.min(pmin,min_z)
+        max_z = math.max(pmin,max_z)
+        
+        
+    endloop
+
+end
+
+@calc_extremities
+fish hist @min_x
+fish hist @max_x
+fish hist @min_y
+fish hist @max_y
+fish hist @min_z
+fish hist @max_z
+
+[min_x0 = min_x]
+[max_x0 = max_x]
+[min_y0 = min_y]
+[max_y0 = max_y]
+[min_z0 = min_z]
+[max_z0 = max_z]
+
+fish def calc_stuff
+calc_extremities
+
+curr_ax = max_z-min_z
+init_ax = max_z0-min_z0
+eps_ax = 1.0-curr_ax/init_ax
+
+curr_rad = (max_x-min_x+max_y-min_y)/2
+init_rad = (max_x0-min_x0+max_y0-min_y0)/2
+eps_rad = 1.0-curr_rad/init_rad
+
+if math.abs(eps_ax) > 0
+poisson = - eps_rad / eps_ax
+else
+poisson = 0
+endif
+
+force = (wall.force.contact.z(wall.find(2))-wall.force.contact.z(wall.find(1)))/2
+area = 2*math.pi*(curr_rad/2)^2
+
+stress = force/area
+
+
+
+end
+
+
+
+@calc_stuff
+fish hist @poisson
+fish hist @eps_ax
+fish hist @eps_rad
+fish hist @stress
+fish callback add @calc_stuff -1  interval 1000
+
+; Cycle a few steps to get past initial vibrations
+model cyc 1000000

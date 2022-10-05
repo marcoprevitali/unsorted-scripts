@@ -1,0 +1,4 @@
+"PFC3D 7.00.146"
+2022:3:14:15:24:52
+C:\Program Files\Itasca\PFC700\exe64\pfc3d700_gui.exe
+Windows 10 Education : 19042
