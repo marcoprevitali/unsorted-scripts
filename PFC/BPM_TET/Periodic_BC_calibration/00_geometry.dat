@@ -1,0 +1,27 @@
+; Create the rigid block geometry. Initially this will just 
+; be a tetrahedral packing that will later be cut. 
+model new
+
+; Set the random seed so we get the same results each time
+model random 10000
+
+; Specify the domain extent
+model domain extent -0.1 0.1 condition periodic
+
+; Create a geometry set to construct rigid blocks to fill the 
+; interior of the set.  
+geometry set 'blocks' 
+geometry generate box -0.1 0.1
+; Make geometry nodes throughout the box and give them 
+; weights (as extra variables) to construct the rblock tetrahedra. 
+; This will help to eliminate the crystaline mesh using the INTERNAL keyword. 
+; In this case the sizes of the tets are scaled from the center of the model
+[maxEdge = 0.025]
+geometry fill [maxEdge]
+geometry node extra 1 [maxEdge]
+rblock construct from-geometry 'blocks' maximum-edge [maxEdge] internal
+
+rblock scale relative 1.01 keep-inertial
+
+; Save the model 
+model save 'init.sav'

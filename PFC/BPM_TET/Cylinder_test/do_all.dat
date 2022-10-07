@@ -1,0 +1,3 @@
+program call '00_generate' 
+program call '01_stress'
+program call '03_UCT'
