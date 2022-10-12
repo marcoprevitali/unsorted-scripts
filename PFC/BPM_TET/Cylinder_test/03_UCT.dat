@@ -10,7 +10,7 @@ wall generate name 'bottom' plane position 0 0.0 -0.001
 wall generate name 'top' plane position 0 0.0 [height+0.001]
 
 contact cmat default type rblock-facet model linear method deformability emod [emod] ...
-                           kratio 2.0
+                           kratio 2.0 property fric 0.9
                            
 [vel = 1.5]
 
@@ -131,4 +131,4 @@ fish hist @stress
 fish callback add @calc_stuff -1  interval 1000
 
 ; Cycle a few steps to get past initial vibrations
-model cyc 1000000
+model cyc 50000

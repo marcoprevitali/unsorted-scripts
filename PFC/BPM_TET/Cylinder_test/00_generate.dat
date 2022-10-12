@@ -1,4 +1,4 @@
-model new
+;model new
 [height = 0.5]
 [rad = 0.15]
 [maxEdge = 0.025]

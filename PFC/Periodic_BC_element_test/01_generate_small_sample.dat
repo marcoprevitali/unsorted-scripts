@@ -1,0 +1,83 @@
+model new
+model random 10001
+[scale = 1]     ; particle scaling factor (this is needed for BVP)
+[poros = 0.5]   ; desired final porosity
+[mult = 1.6]    ; mutiplication factor for radius expansion method
+
+define geometry
+        kn_li  = 1e8        ;kn_lin    ; normal contact stiffness
+        ks_li  = kn_li / 4. ;ks_lin    ; shear contact stiffness
+        d_dens = 2700
+        c_fri = 0.3
+    global brick_width  = 0.01  ; meters
+    global brick_height = 0.01
+    global brick_thick  = 0.01
+    global tot_vol      = brick_width * brick_height * brick_thick
+end
+@geometry
+;
+[domain_extent_x = brick_width]
+[domain_extent_y = brick_thick]
+[domain_extent_z = brick_height]
+;
+domain extent [-0.5*domain_extent_x] [0.5*domain_extent_x] ...
+              [-0.5*domain_extent_y] [0.5*domain_extent_y] ...
+              [-0.5*domain_extent_z] [0.5*domain_extent_z]  
+domain condition periodic periodic periodic                    
+
+[ sol_vol = tot_vol * (1. - poros) ]
+[rad = 2.5e-4]
+[nb = int(sol_vol / (math.pi * rad^3. * 4. / 3.))]
+
+ ball generate radius @rad   ...
+    number @nb box ([-0.5*brick_width], [0.5*brick_width], [-0.5*brick_thick], [0.5*brick_thick], [-0.5*brick_height], [0.5*brick_height]) tries 800000; [number_array(i)] tries 2000000
+
+
+
+
+def porosity_check_at_ball_genereate
+    V_ball = 0
+    loop foreach bp ball.list
+        R_ball = ball.radius(bp)
+        V_ball = V_ball + 4.0 * math.pi * R_ball^3 / 3.0
+    endloop
+    poros_ball_generate = 1.0 - V_ball / (brick_width * brick_thick * brick_height)
+end
+@porosity_check_at_ball_genereate
+list @poros_ball_generate
+
+
+cmat default model linear ;... ;Add LINEAR PROPERTIES
+;
+ball attribute density @d_dens
+;
+ball property 'kn' @kn_li ...
+            'ks' @ks_li ...
+            'fric' @c_fri
+
+
+[mult_fact = mult^(1./10.)]
+
+ball property 'fric' @c_fri
+model large-strain on
+
+def mult_balls  ; ball expansion 
+ loop i(1,10)
+   command
+    ball attribute radius mult @mult_fact
+     cy 200 calm 100
+   endcommand
+ endloop
+end
+@mult_balls
+
+@porosity_check_at_ball_genereate
+
+model calm
+
+model save 'temp.sav'
+
+;GO TO Brick Command REDUCE FORCE
+
+;THEN GO TO BRICK 10 KPA
+

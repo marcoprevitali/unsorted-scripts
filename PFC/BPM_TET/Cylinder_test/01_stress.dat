@@ -2,12 +2,12 @@ model restore 'geom_init'
 ; Specify the material properties. The SimpleBBM example
 ; can be used to calibrate a specimen.  
 [density = 2650.0]
-[young = 50.0e9]
-[poisson = 0.25]
-[tensileStrength = 2.e7]
-[cohesionFactor = 2.4]
-[emod = 7.25e10] 
-[topOfModel = 0] ; per overconsolidare
+;[young = 50.0e9]
+;[poisson = 0.25]
+;[tensileStrength = 2.e8]
+;[cohesionFactor = 2.e8]
+;[emod = 7.25e10] 
+;[topOfModel = 0] ; per overconsolidare
 
 ; Set the rigid block damping and density
 rblock attribute density [density] damp 0.7
@@ -19,9 +19,9 @@ rblock contact-resolution update-area true
 ; all bonded contacts have infinite strength. This is 
 ; useful when equilibrating the model. 
 contact cmat default type rblock-rblock model softbond method deformability emod [emod] ...
-                           kratio 2.0 ...
+                           kratio @kratio ...
                            property sb_ten @tensileStrength sb_coh @cohesionFactor ...
-                           sb_fa 30.0 fric 0.5 sb_mode 1
+                           sb_fa @sb_fa fric @fa sb_mode 1
                                     
 
 ; Turn on gravity
@@ -53,7 +53,9 @@ rblock erode relative 0.1 skip-errors
 
 ; Free the rigid blocks and zones
 rblock free velocity spin
-rblock fix spin range group 'boundary=edge_boundary'
+;rblock fix spin range group 'boundary=edge_boundary'
+;rblock fix velocity-x range group 'boundary=edge_boundary'
+;rblock fix velocity-y range group 'boundary=edge_boundary'
 ; Fix the boundary rblocks and zones
 ;rblock fix velocity range group 'boundary'
 
@@ -62,4 +64,4 @@ rblock fix spin range group 'boundary=edge_boundary'
 model solve ratio-average 1e-5
 
 
-model save 'stressed'
+;model save 'stressed'
