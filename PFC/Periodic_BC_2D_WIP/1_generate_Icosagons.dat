@@ -1,0 +1,339 @@
+model new
+model large-strain on
+program echo off
+model random 10002
+
+
+ [scale   = 1]  ; amplification factor for ball size in order to reduce number of particles
+ [flag_porosity = 0]   ;see eps_ini
+ [ngranu = 100]         ;number of cycles to calculate PSD 
+ [c_fri   = .2]    ; contact friction
+ [c_fri_wall   = .0]    ; contact friction
+ [d_dens  = 2.71]   ; ball density
+ [poros   = 0.167]   ; desired final porosity
+ [width   = .35]  ; width of box
+ [height   = .35]  ; height of box
+ 
+ 
+ ; shape parameters, diameters, etc..
+ ; the percentage of solid volume occupied by each of these shapes
+ [solid_vol_triangles = 0]
+ [solid_vol_hexagons = 0]
+ [solid_vol_circles = 0]
+ [solid_vol_squares = 0]
+ [solid_vol_pentagons = 0]
+ [solid_vol_heptagons = 0]
+ [solid_vol_icosagons = 100]
+ 
+ ;in icosagon case, area is calculated by side length so here diam1 and diam2 are side lengths
+ [diam1 = 0.001584] ;for 10mm inscribed diameter >> 1.584mm is side length
+ [diam2 = 0.0009503] ;for 6mm inscribed diameter >> 0.9503mm is side length
+ [perc1 = 40]
+ [perc2 = 60]
+ 
+ 
+ 
+ 
+ 
+ [init_scale = 0.8/2];
+;********************************************* hertz
+;
+ [_nu = 0.3]			;poisson
+ [_g = 26.e6]			;shear
+ [_nu_wall = 0.3]		;poisson wall
+ [_g_wall = 26.e6]		;shear wall
+;
+;*********************************************
+
+[porosity_type = 0]
+
+
+
+model domain extent 0.0 @width 0.0 @height;[-2*width] [2*width] [-2*height] [2*height] 
+model domain condition periodic
+
+; generate the box
+;wall generate box 0.0 @width 0.0 @height expand 1.8; extend the wall to be able to use servos without breaking the box
+;[wall_bottom = wall.find(1)]
+;[wall_right = wall.find(2)]
+;[wall_top = wall.find(3)]
+;[wall_left = wall.find(4)]
+
+call 'generate_mix.py'
+
+;what is this
+[masse = height * diam1 * d_dens * (1.0-poros)]
+[massa = width * diam1 * d_dens*(1.0-poros)]
+
+
+def contact_law_to_use
+        command
+        contact cmat default model hertz ;...
+        ;    property   hz_shear @_g ...
+        ;               hz_poiss @_nu ...
+        ;               fric @c_fri
+        rblock attribute density @d_dens
+        ;ball attribute density @d_dens
+        rblock property 'hz_shear' @_g ...
+                      'hz_poiss' @_nu ...
+                      'fric' @c_fri
+        ;ball property 'hz_shear' @_g ...
+        ;'hz_poiss' @_nu ...
+        ;'fric' @c_fri
+        wall property 'hz_shear' @_g_wall ...
+                      'hz_poiss' @_nu_wall ...
+                      'fric' @c_fri_wall
+        endcommand 
+end
+@contact_law_to_use
+
+
+def get_poros
+sum = 0.0
+sum_2 =0.0
+loop foreach rb rblock.list
+sum = sum + rblock.vol(rb)
+endloop
+loop foreach b ball.list
+sum = sum + ball.vol(b)
+endloop
+pmeas = 1.0 - sum/(height*width)
+pmeas_2 = pmeas
+end
+@get_poros
+
+
+def mult_fact ;calculate the multiplier factor for the radii expansion method
+mult = (((1.0 - poros) / (1.0 - pmeas)))
+mult_fact = mult^(1./10.)
+end
+@mult_fact
+list @mult
+
+rblock property 'fric' 0.0 ; so we don't have locking during ball expansion
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+
+def mult_rblocks ;expand the particles
+ loop i(1,10)
+ loop foreach rb rb.list
+ target_vol = rb.vol(rb) * mult_fact
+ rb.scalevol(rb,target_vol)
+ endloop
+   command
+    model cycle 200 calm 100
+   endcommand
+ endloop
+ loop foreach rb rblock.list
+    sum = sum + rblock.vol(rb)
+    sum_2 = sum 
+end_loop 
+ end
+ 
+ @get_poros
+ @mult_rblocks
+ @get_poros
+ 
+ list @pmeas
+ list @poros
+[y_compression = 0]
+[tsxx= 0]
+[tsyy=0]
+call 'python_functions_periodic.py'
+
+cy 1
+ 
+
+
+; set the history variables
+fish history @eps_y
+fish hist @eps_x
+fish hist @eps_vol
+fish hist @eps_dev
+fish hist @p_kPa
+fish hist @q_kPa
+fish hist @eta
+fish hist @poro
+fish hist @void_ratio
+
+cycle 200
+
+rblock property 'fric' @c_fri
+cycle 800 calm 10
+
+rblock attribute damp 0.2
+
+cycle 10000 calm 10
+
+;call 'control.dat'
+[cont_type = 1]
+[alx = 1] 
+[aly = 1] 
+[load_rate = 0.0] 
+[mass_multiplier_x = 5.]
+[mass_multiplier_y = 5.] 
+[sx0 = 5.0] 
+[sy0 = 5.0] 
+[max_vel=0.01] ; to be calculated using strain rate
+
+;@control
+
+
+
+cy 1000
+rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+rblock prop 'fric' @c_fri
+model calm
+;ball prop 'fric' @c_fri
+
+cy 10000
+rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+rblock prop 'fric' @c_fri
+model calm
+;ball prop 'fric' @c_fri
+
+cy 10000
+rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+rblock prop 'fric' @c_fri
+model calm
+;ball prop 'fric' @c_fri
+
+cy 10000
+rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+rblock prop 'fric' @c_fri
+model calm
+;ball prop 'fric' @c_fri
+
+cy 10000
+rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+ rblock attribute velocity-x  0.0 velocity-y 0.0 
+ rblock prop 'fric' @c_fri
+model calm
+;ball prop 'fric' @c_fri
+
+cy 10000
+ rblock prop 'fric' 0.0
+;ball prop 'fric' 0.0
+cy 10000
+rblock attribute velocity-x  0.0 velocity-y 0.0 
+model calm
+;ball prop 'fric' @c_fri
+
+rblock prop 'fric' @c_fri
+cy 10000
+rblock prop 'fric' @c_fri
+;ball prop 'fric' @c_fri
+
+cy 20000 calm 10
+
+[stressyx = 0]
+model orientation-tracking on
+def export_rblock_rotations
+    a = array.create(10000000)
+    j=1
+    filename1 = string.build('rblock_data_%1.fio',string(mech.step))
+
+    ;rblockstress = array.create(3,3)
+    
+    loop foreach p rblock.list
+              i=rblock.id(p)
+			  x=rblock.pos.x(p)
+              y=rblock.pos.y(p)
+              vol=rblock.vol(p)
+			  f_x = rblock.force.unbal.x(p)
+			  f_y =rblock.force.unbal.y(p)
+			  d_x = rblock.disp.x(p)
+			  d_y = rblock.disp.y(p)
+              part_connection = rblock.contactnum(p) 
+			  stressxx=     rblock.stress.xx(p)
+			  stressxy=     rblock.stress.xy(p)
+		;	  stressxz=     rblock.stress.xz(bth)
+		;	  stressyx= -1* rblock.stress.xz(bth)
+			  stressyy=     rblock.stress.yy(p)
+		;	  stressyz=     rblock.stress.yz(bth)
+		;	  stresszx= -1* rblock.stress.xz(bth)
+		;	  stresszy= -1* rblock.stress.yz(bth)
+		;	  stresszz=     rblock.stress.zz(bth)
+              rotation = rblock.rotation(p)
+              
+                          
+    trial=string(i)+'\t'+string(x)+'\t'+string(y)+'\t'...
+         +string(vol)+'\t'...
+         +string(stressxx)+'\t'+string(stressxy)+'\t'...
+         +string(stressyx)+'\t'+string(stressyy)+'\t'...
+         +string(f_x)+'\t'+string(f_y)+'\t'...
+         +string(d_x)+'\t'+string(d_y)+'\t'...
+         +string(part_connection)+'\t'+string(rotation)
+
+    a(j) = trial
+	
+    j=j+1
+    
+    end_loop
+    
+    n=j-1
+ 
+    h_ = file.open(filename1, 1, 1)
+    w = file.write(a,n)
+    h_ = file.close
+end
+cy 1000
+@export_rblock_rotations
+
+;[cont_type=6]
+;@control
+ 
+;[sx0 = 1] 
+;[sy0 = 1] 
+;[sz0 = 1]
+;[load_rate=0.0]
+;hist purge
+;cy 10000
+
+;rblock attribute velocity-x  0.0 velocity-y 0.0 
+;rblock attribute damp 0.05
+;model calm
+;rblock attribute damp 0.05
+
+;hist purge
+;cy 5000 calm 10
+
+
+[name_file_C='C_%1.fio']
+[name_file_B='B_%1.fio']
+[name_file_H='H_%1.his']
+[name_file_sav='iso%1.sav']
+
+call 'write_rblock_mech.dat'
+call 'write_rblock_contact.dat'
+
+
+def max_p
+max_p = math.round(p_kPa)
+end
+
+;call 'PSD.dat'
+;[ngranu = 0]
+;@PSD
+@write_rblock_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+@write_contact_mech(@max_p,@name_file_C)
+
+
+rblock prop 'fric' @c_fri
+list @sum
+model save 'tempp.sav'
+
+model save 'iso1.sav'

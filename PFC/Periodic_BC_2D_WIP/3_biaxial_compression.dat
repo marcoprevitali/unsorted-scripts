@@ -1,0 +1,215 @@
+;;;SIMULATION OF A DRAINED COMPRESSION TRIAXIAL TEST
+model restore 'DTX_iso19_okdtx_2.sav'   ;;;test at a confining pressure of 200kPa
+
+;cont_type 1 eps_eps -> strain control isotropic constant strain
+;cont_type 2 sig_sig -> stress control isotropic constant load
+;cont_type 3 eps_sig -> strain control triaxial
+;cont_type 4 edo_eps -> strain control oedometric
+;cont_type 5 edo_sig -> stress control oedometric
+;cont_type 6 iso_sig -> stress control isotropic use load_rate=to increase sz
+;cont_type 7 undrained_z -> strain control undrained
+
+[sx0 = x_str]
+[sy0 = y_str]
+[alx = 0]
+[aly = 0]
+[load_rate=0.0]
+
+cy 1000
+
+[cont_type = 3] ;cont_type 3 eps_sig -> strain control triaxial
+@control
+
+[alx = 0.0]
+[aly = 1.0]
+[load_rate= 0.0005] ;initial loading rate was 0.05 - aliusman 
+[y_compression = load_rate]
+[sx0 = x_str]
+[sy0 = y_str]
+
+
+[name_file_C='Cfr_iso19_okdtx_%1.fio']
+[name_file_B='Bfr_iso19_okdtx_%1.fio']
+[name_file_H='Hfr_iso19_okdtx_%1.his']
+[name_file_sav='DTX_iso19_okdtx_%1.sav']
+
+
+def eppss
+max_p = math.round(p_kPa)
+eppss=math.round(eps_dev*10)
+end
+@eppss
+
+@export_rblock_rotations
+;@write_ball_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+;@write_contact_mech(@max_p,@name_file_C)
+;
+[flag1=0]
+[flag2=0]
+[flag3=0]
+def drive
+  	if eps_dev > 0.2002 then
+                   if flag1=0
+                    flag1=1
+                    command
+                    @write_rblock_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+                    @write_contact_mech(@eppss,@name_file_C)
+                    end_command
+                   endif
+        end_if
+       ; if eps_dev > 0.02 then
+       ;            if flag2=0
+       ;             flag2=1
+       ;             command
+       ;             @write_ball_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+       ;             @write_contact_mech(@eppss,@name_file_C)
+       ;             end_command
+       ;            endif
+       ; end_if
+       ; if eps_dev > 0.03 then
+       ;            if flag3=0
+       ;             flag3=1
+       ;             command
+       ;             @write_ball_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+       ;            @write_contact_mech(@eppss,@name_file_C)
+       ;             end_command
+       ;            endif
+       ; end_if
+end
+hist purge
+rblock attribute rotation 0  
+;rblock initialize spin 0
+;set timestep fix 1.5e-7 ;to fix the timestep. ATTENTION the simulation must be quasi-static
+[num2skip = 50000]
+def export_rblock_rotations
+    if math.floor(mech.cycle/num2skip)*num2skip = mech.cycle
+    a = array.create(10000000)
+    j=1
+
+    ;rblockstress = array.create(3,3)
+    
+    loop foreach p rblock.list
+              i=rblock.id(p)
+			  x=rblock.pos.x(p)
+              y=rblock.pos.y(p)
+              vol=rblock.vol(p)
+			  f_x = rblock.force.unbal.x(p)
+			  f_y = rblock.force.unbal.y(p)
+			  d_x = rblock.disp.x(p)
+			  d_y = rblock.disp.y(p)
+              part_connection = rblock.contactnum(p) 
+			  stressxx=     rblock.stress.xx(p)
+			  stressxy=     rblock.stress.xy(p)
+		;	  stressxz=     rblock.stress.xz(bth)
+		;	  stressyx= -1* rblock.stress.xz(bth)
+			  stressyy=     rblock.stress.yy(p)
+		;	  stressyz=     rblock.stress.yz(bth)
+		;	  stresszx= -1* rblock.stress.xz(bth)
+		;	  stresszy= -1* rblock.stress.yz(bth)
+		;	  stresszz=     rblock.stress.zz(bth)
+              rotation = rblock.rotation(p)
+              
+                          
+    trial=string(mech.cycle)+'\t'+string(i)+'\t'+string(x)+'\t'+string(y)+'\t'...
+         +string(vol)+'\t'...
+         +string(stressxx)+'\t'+string(stressxy)+'\t'...
+         +string(stressyx)+'\t'+string(stressyy)+'\t'...
+         +string(f_x)+'\t'+string(f_y)+'\t'...
+         +string(d_x)+'\t'+string(d_y)+'\t'...
+         +string(part_connection)+'\t'+string(rotation)
+
+    a(j) = trial
+	
+    j=j+1
+    
+    end_loop
+    
+    n=j-1
+ 
+    w = file.write(a,n)
+    endif
+end
+
+;fish callback add @export_rblock_rotations -11
+[filename_rot_output = 'rblock_rot_data_biaxial.fio']
+
+[h_ = file.open(filename_rot_output, 1, 1)]
+model cycle 100000000
+[h_ = file.close]
+;ret
+model save 'cu'
+;;;SIMULATON OF AN UNDRAINED TRIAXIAL TEST  
+;model restore 'iso200.sav'
+;cont_type 1 eps_eps -> strain control isotropic constant strain
+;cont_type 2 sig_sig -> stress control isotropic constant load
+;cont_type 3 eps_sig -> strain control triaxial
+;cont_type 4 edo_eps -> strain control oedometric
+;cont_type 5 edo_sig -> stress control oedometric
+;cont_type 6 iso_sig -> stress control isotropic use load_rate=to increase sz
+;cont_type 7 undrained_z -> strain control undrained
+;call 'control.dat'
+;[sx0 = x_str]
+;[sy0 = y_str]
+;[alx = 0]
+;[aly = 0]
+;[load_rate=0.0]
+
+;cy 10000
+
+;[cont_type = 7] ;cont_type 3 eps_sig -> strain control triaxial
+;@control
+
+
+;[alx = 0]
+;[aly = 1]
+;[load_rate = 0.01]
+
+;[name_file_C='Cfr_%1.fio']
+;[name_file_B='Bfr_%1.fio']
+;[name_file_H='Hfr_%1.his']
+;[name_file_sav='UTXfr%1.sav']
+;
+;def max_p
+;max_p = math.round(p_kPa)
+;eppss=math.round(eps_dev*10)
+;end
+;@max_p
+
+
+
+;[flag1=0]
+;[flag2=0]
+;[flag3=0]
+;def drive
+;    	if eps_dev > 0.1 then
+;                   if flag1=0
+;                    flag1=1
+;                    command
+;                    @write_ball_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+;                    @write_contact_mech(@eppss,@name_file_C)
+;                    end_command
+;                   endif
+;        end_if
+;        if eps_dev > 0.2 then
+;                   if flag2=0
+;                    flag2=1
+;                    command
+;                    @write_ball_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+;                    @write_contact_mech(@eppss,@name_file_C)
+;                    end_command
+;                   endif
+;        end_if
+    ;    if eps_dev > 0.01 then
+   ;                if flag3=0
+   ;                 flag3=1
+    ;                command
+   ;                 @write_ball_mech(@eppss,@name_file_B,@name_file_H,@name_file_sav)
+    ;                @write_contact_mech(@eppss,@name_file_C)
+    ;                end_command
+    ;               endif
+   ;     end_if
+;end
+;fish callback add @drive -11
+;cy 35000
+
+;save 'UTX.sav'

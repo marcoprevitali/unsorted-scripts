@@ -1,0 +1,156 @@
+;;; SIMULATION OF AN ISOTROPIC COMPRESSION TES
+
+model restore 'iso1.sav'
+
+[multmassa_x=1]
+[multmassa_y=1]
+
+;ball attribute damp 0.1
+
+[name_file_C='Cfr_%1.fio']
+[name_file_B='Bfr_%1.fio']
+[name_file_H='Hfr_%1.his']
+[name_file_sav='isoDENSEfr%1.sav']
+
+
+def max_p
+max_p = math.round(p_kPa)
+end
+@max_p
+
+def voideratiosave
+voideratiosave=math.round(100*void_ratio)
+end
+@voideratiosave
+
+call 'python_functions_periodic.py'
+fish hist @sxx
+fish hist @syy
+fish list callbacks
+
+[alx = 1]
+[aly = 1]
+[load_rate=0.005]
+[tsyy = 100.0]
+[tsxx = 100.0]
+
+
+def stop_iso_compression
+if math.abs(tsxx-sxx)<1
+return True
+endif
+end
+
+model solve fish-halt @stop_iso_compression
+
+;@export_rblock_rotations
+;@write_rblock_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+;@write_contact_mech(@max_p,@name_file_C)
+;
+;;;saving at several steps
+[flag4=0]
+[flag3=0]
+[flag2=0]
+[flag1=0]
+def drive
+        if sxx > 39.2 then
+                   if flag1=0
+                    flag1=1
+                    command
+                    @write_contact_mech(@max_p,@name_file_C)
+                    @write_rblock_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+                   end_command
+                   endif
+        end_if
+    	;if p_kPa > 14.7 then
+        ;           if flag2=0
+        ;            flag2=1
+        ;            command
+        ;            @write_ball_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+        ;            @write_contact_mech(@max_p,@name_file_C)
+        ;            end_command
+        ;           endif
+       ; end_if
+    	;if p_kPa > 24.5 then
+        ;           if flag3=0
+        ;            flag3=1
+        ;            command
+        ;            @write_ball_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+        ;            @write_contact_mech(@max_p,@name_file_C)
+        ;            end_command
+        ;            endif
+        ;end_if
+        ;    	if p_kPa > 34.3 then
+        ;           if flag4=0
+        ;            flag4=1
+        ;            command
+        ;            @write_ball_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
+        ;            @write_contact_mech(@max_p,@name_file_C)
+        ;            end_command
+        ;           endif
+        ;end_if
+end
+
+hist purge
+rblock attribute rotation 0
+;fish callback add @drive -11
+;fish callback remove @iso_sig -11
+;fish list callbacks
+;ret
+
+[num2skip = 50000]
+def export_rblock_rotations
+    if math.floor(mech.cycle/num2skip)*num2skip = mech.cycle
+    a = array.create(10000000)
+    j=1
+
+    ;rblockstress = array.create(3,3)
+    
+    loop foreach p rblock.list
+              i=rblock.id(p)
+			  x=rblock.pos.x(p)
+              y=rblock.pos.y(p)
+              vol=rblock.vol(p)
+			  f_x = rblock.force.unbal.x(p)
+			  f_y = rblock.force.unbal.y(p)
+			  d_x = rblock.disp.x(p)
+			  d_y = rblock.disp.y(p)
+              part_connection = rblock.contactnum(p) 
+			  stressxx=     rblock.stress.xx(p)
+			  stressxy=     rblock.stress.xy(p)
+		;	  stressxz=     rblock.stress.xz(bth)
+			  stressyx= -1* rblock.stress.xz(p)
+			  stressyy=     rblock.stress.yy(p)
+		;	  stressyz=     rblock.stress.yz(bth)
+		;	  stresszx= -1* rblock.stress.xz(bth)
+		;	  stresszy= -1* rblock.stress.yz(bth)
+		;	  stresszz=     rblock.stress.zz(bth)
+              rotation = rblock.rotation(p)
+              
+                          
+    trial=string(mech.cycle)+'\t'+string(i)+'\t'+string(x)+'\t'+string(y)+'\t'...
+         +string(vol)+'\t'...
+         +string(stressxx)+'\t'+string(stressxy)+'\t'...
+         +string(stressyx)+'\t'+string(stressyy)+'\t'...
+         +string(f_x)+'\t'+string(f_y)+'\t'...
+         +string(d_x)+'\t'+string(d_y)+'\t'...
+         +string(part_connection)+'\t'+string(rotation)
+
+    a(j) = trial
+	
+    j=j+1
+    
+    end_loop
+    
+    n=j-1
+ 
+    w = file.write(a,n)
+    endif
+end
+
+fish callback add @export_rblock_rotations -11
+[filename_rot_output = 'rblock_rot_data_compression.fio']
+
+[h_ = file.open(filename_rot_output, 1, 1)]
+cy 100000000
+[h_ = file.close]
