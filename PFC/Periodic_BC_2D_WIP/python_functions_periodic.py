@@ -26,7 +26,7 @@ phi = 30        # degrees, set to 0 for isotropic
 gain_x = 1e-2
 gain_y = 1e-2
 sr_cap = 999
-
+yrate = 0
 
 
 
@@ -89,7 +89,8 @@ def servo_iso_stress(*args):
     # print(zdiff)
     # print('----')
 
-
+    if abs(eps_rate_y) > 0:
+        gain_x = max([gain_x,abs(eps_rate_y)*(tsxx*0.1)])
     p =  (sxx+syy)/2
     q = syy-sxx
     xrate   = xdiff * gain_x

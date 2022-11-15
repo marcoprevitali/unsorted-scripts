@@ -1,0 +1,17 @@
+def eps_y
+ local epsy
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+ 
+
+ eps_y=-2.0 * (y_t-height) / (height + y_t) 
+ epsy=-2.0 * (y_t-height) / (height + y_t) 
+ eps_y1=-(y_t-height) / (height)
+ eps_x=-2.0 * (x_w-width) / (width + x_w)
+ eps_x1=-(x_w-width) / (width)
+ 
+ eps_vol = eps_x + epsy 
+ eps_vol1 = eps_x1 + eps_y1 
+ eps_dev = 2./3.*(epsy -eps_x)
+ eps_dev1 = 2./3.*(eps_y1 -eps_x1)
+end

@@ -36,13 +36,17 @@ fish list callbacks
 
 
 def stop_iso_compression
-if math.abs(tsxx-sxx)<1
+if math.abs(tsxx-sxx)<1.0
 return True
 endif
 end
 
 model solve fish-halt @stop_iso_compression
-
+ret
+[y_compression = 1e-1]
+history purge
+cy 10000000
+ret
 ;@export_rblock_rotations
 ;@write_rblock_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)
 ;@write_contact_mech(@max_p,@name_file_C)

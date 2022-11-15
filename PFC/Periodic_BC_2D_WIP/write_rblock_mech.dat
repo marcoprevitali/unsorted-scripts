@@ -1,0 +1,60 @@
+def write_rblock_mech(indice,name_rblock,name_hi,name_sav)
+;local indice name_rblock name_hi name_sav
+    a = array.create(10000000)
+    j=1
+    filename1 = string.build(name_rblock,indice)
+    filename2 = string.build(name_hi,indice)
+    filename3 = string.build(name_sav,indice)
+    ;rblockstress = array.create(3,3)
+    
+    loop foreach p rblock.list
+              i=rblock.id(p)
+			  x=rblock.pos.x(p)
+              y=rblock.pos.y(p)
+              vol=rblock.vol(p)
+			  f_x = rblock.force.unbal.x(p)
+			  f_y = rblock.force.unbal.y(p)
+			  d_x = rblock.disp.x(p)
+			  d_y = rblock.disp.y(p)
+              part_connection = rblock.contactnum(p) 
+			  stressxx=     rblock.stress.xx(p)
+			  stressxy=     rblock.stress.xy(p)
+		;	  stressxz=     rblock.stress.xz(bth)
+		;	  stressyx= -1* rblock.stress.xz(bth)
+			  stressyy=     rblock.stress.yy(p)
+		;	  stressyz=     rblock.stress.yz(bth)
+		;	  stresszx= -1* rblock.stress.xz(bth)
+		;	  stresszy= -1* rblock.stress.yz(bth)
+		;	  stresszz=     rblock.stress.zz(bth)
+              rblock.extra(p,8)=stressyy
+              rblock.extra(p,9)=stressxx
+              rblock.extra(p,10)=stressxy
+               rotation = rblock.rotation(p)
+              
+                          
+    trial=string(i)+'\t'+string(x)+'\t'+string(y)+'\t'...
+         +string(vol)+'\t'...
+         +string(stressxx)+'\t'+string(stressxy)+'\t'...
+         +string(stressyx)+'\t'+string(stressyy)+'\t'...
+         +string(f_x)+'\t'+string(f_y)+'\t'...
+         +string(d_x)+'\t'+string(d_y)+'\t'...
+         +string(part_connection)+'\t'+string(rotation)
+
+    a(j) = trial
+	
+    j=j+1
+    
+    end_loop
+    
+    n=j-1
+ 
+    h_ = file.open(filename1, 1, 1)
+    w = file.write(a,n)
+    h_ = file.close
+    
+command
+   history export 1 2 3 4 5 6 7 8 9 ...;11 12 13 14 15 16 17 18 19 20 ...
+  file @filename2 truncate  
+   model save @filename3
+ endcommand
+end

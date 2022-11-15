@@ -1,0 +1,31 @@
+def eps_ini_rblock
+  
+  
+    y_str=y_for/x_w
+    x_str=x_for/y_t
+ 
+    sy0=y_str
+    sx0=x_str
+
+
+    sum = 0.0 ; get actual porosity
+    sum_2 = 0.0
+    
+    loop foreach rb rblock.list
+        sum = sum + rblock.vol(rb)
+        sum_2 = sum 
+    end_loop
+    loop foreach b ball.list
+        sum = sum + ball.vol(b)
+        sum_2 = sum 
+    end_loop
+    if flag_porosity=0
+        sum0=sum
+        sum20=sum_2
+    endif
+    flag_porosity=flag_porosity+1
+      
+    area0 = height0*width0
+    n0= 1.0 - sum0 / area0
+
+end

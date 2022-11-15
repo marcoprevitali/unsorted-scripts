@@ -1,0 +1,56 @@
+def write_contact_mech(indice,name_file)
+    cf = array.create(10000000)
+    j=1
+    filename4 = string.build(name_file,indice)
+    ;rblockstress = array.create(3,3)
+    
+    loop foreach cp contact.list
+            b1 = contact.end1(cp)
+            b2 = contact.end2(cp)
+            if type.pointer.id(b1) = rblock.typeid then
+                x1=rblock.pos.x(b1)
+                y1=rblock.pos.y(b1)
+                rblock1=rblock.id(b1)
+            endif
+            if type.pointer.id(b2) = rblock.typeid then
+                x2=rblock.pos.x(b2)
+                y2=rblock.pos.y(b2)
+                rblock2=rblock.id(b2)
+            endif
+            if type.pointer.id(b1) =wall.facet.typeid then
+                x1=contact.pos.x(cp)
+                y1=contact.pos.y(cp)
+                rblock1=wall.facet.id(b1)
+                rblock1=-1*rblock1
+            endif
+            if type.pointer.id(b2) = wall.facet.typeid then
+                x2=contact.pos.x(cp)
+                y2=contact.pos.y(cp)
+                rblock2=wall.facet.id(b2)
+                rblock2=-1*rblock2
+            endif
+                
+            x=contact.pos.x(cp)
+            y=contact.pos.y(cp)
+            csforce = contact.force.shear(cp) ;(c_xsforce(cp)^2 + c_ysforce(cp)^2 + c_zsforce(cp)^2)^0.5
+            cnforce = contact.force.normal(cp)
+            unitnorm_x = contact.normal.x(cp)
+            unitnorm_y = contact.normal.y(cp)
+                          
+    trial=string(x)+'\t'+string(y)+'\t'+string(unitnorm_x)+'\t'...
+         +string(unitnorm_y)+'\t'+string(csforce)+'\t'...
+         +string(cnforce)+'\t'+string(rblock1)+'\t'+string(rblock2)
+
+    cf(j) = trial
+	
+    j=j+1
+    
+    end_loop
+    
+    n=j-1
+ 
+    h_ = file.open(filename4, 1, 1)
+    w = file.write(cf,n)
+    h_ = file.close
+
+end

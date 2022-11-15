@@ -1,0 +1,4 @@
+"PFC2D 7.00.154"
+2022:11:3:11:22:2
+C:\Program Files\Itasca\PFC700\exe64\pfc2d700_gui.exe
+Windows 10 Pro : 19043

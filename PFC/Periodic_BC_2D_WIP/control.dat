@@ -1,0 +1,323 @@
+;;;; this is to program a strain and or stress servocontrol of walls 
+;;;; using DeltaF=ma as a concept
+;    
+[alx = 0]
+[aly = 0]
+[load_rate = 0]
+def eps_eps ; cont_type 1
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+    wall.vel.x(wall_left)=0.0
+    wall.vel.y(wall_bottom)=0.0
+    wall.vel.x(wall_right)=-alx*load_rate
+    wall.vel.y(wall_top)=-aly*load_rate
+end
+;
+[mass_multiplier_x = 0]
+[mass_multiplier_y = 0]
+[max_vel = 0]
+def sig_sig  ; cont_type 2
+    s_xx=sx0
+    sy0=sy0+load_rate*(1+math.log(sy0))
+    s_yy=sy0
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+
+    x_req=s_xx*y_t
+    y_req=s_yy*x_w
+    
+    x_cur=wall.force.contact.x(wall_right)
+    y_cur=wall.force.contact.y(wall_top)
+    x_cur2=math.abs(wall.force.contact.x(wall_left))
+    y_cur2=math.abs(wall.force.contact.y(wall_bottom))
+    ax=(x_req-x_cur)/(masse * mass_multiplier_x)
+    ay=(y_req-y_cur)/(masse * mass_multiplier_y)
+   
+    ax2=(x_req-x_cur2)/(masse * mass_multiplier_x)
+    ay2=(y_req-y_cur2)/(masse * mass_multiplier_y)
+   
+    velocity_to_assign_x = ax*global.timestep
+    velocity_to_assign_y = ay*global.timestep
+    velocity_to_assign_x2=ax2*global.timestep
+    velocity_to_assign_y2=ay2*global.timestep
+    ;
+    if math.abs(velocity_to_assign_x) < max_vel
+        wall.vel.x(wall_right)=wall.vel.x(wall_right)-velocity_to_assign_x
+    else
+        if velocity_to_assign_x > 0
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)-max_vel
+        else
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)+max_vel
+        endif
+    endif
+    ;
+    if math.abs(velocity_to_assign_y) < max_vel
+        wall.vel.y(wall_top)=wall.vel.y(wall_top)-velocity_to_assign_y
+    else
+        if velocity_to_assign_y > 0
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)-max_vel
+        else
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)+max_vel
+        endif
+    endif 
+    ;
+    if math.abs(velocity_to_assign_x2) < max_vel
+        wall.vel.x(wall_left)=wall.vel.x(wall_left)+velocity_to_assign_x2
+    else
+        if velocity_to_assign_x2 > 0
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)+max_vel
+        else
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)-max_vel
+        endif
+    endif 
+    ;
+    if math.abs(velocity_to_assign_y2) < max_vel
+        wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)+velocity_to_assign_y2
+    else
+        if velocity_to_assign_y2 > 0
+            wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)+max_vel
+        else
+            wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)-max_vel
+        endif
+    endif 
+end
+;
+def eps_sig ; cont_type 3
+    s_xx=sx0
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+
+    x_req=s_xx*y_t
+    
+    wall.vel.y(wall_bottom)=0.0
+    wall.vel.y(wall_top)=-aly*load_rate
+    
+    x_cur=wall.force.contact.x(wall_right)
+    x_cur2=math.abs(wall.force.contact.x(wall_left))
+    ax=(x_req-x_cur)/(masse * mass_multiplier_x)
+    ax2=(x_req-x_cur2)/(masse * mass_multiplier_x)
+   
+    velocity_to_assign_x = ax*global.timestep
+    velocity_to_assign_x2=ax2*global.timestep
+
+    ;
+    if math.abs(velocity_to_assign_x) < max_vel
+        wall.vel.x(wall_right)=wall.vel.x(wall_right)-velocity_to_assign_x
+    else
+        if velocity_to_assign_x > 0
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)-max_vel
+        else
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)+max_vel
+        endif
+    endif
+    ;
+    if math.abs(velocity_to_assign_x2) < max_vel
+        wall.vel.x(wall_left)=wall.vel.x(wall_left)+velocity_to_assign_x2
+    else
+        if velocity_to_assign_x2 > 0
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)+max_vel
+        else
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)-max_vel
+        endif
+    endif 
+    ;
+end
+;
+def edo_eps ; cont_type 4
+   x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+    wall.vel.x(wall_left)=0.0
+    wall.vel.y(wall_bottom)=0.0
+    wall.vel.x(wall_right)=0.0
+    wall.vel.y(wall_top)=-aly*load_rate
+end
+;
+def edo_sig ; cont_type 5
+    sy0=sy0+load_rate*(1+math.log(sy0))
+    s_yy=sy0
+    
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+
+    y_req=s_yy*x_w
+
+    y_cur=wall.force.contact.y(wall_top)
+    ay=(y_req-y_cur)/(masse * mass_multiplier_y)
+
+    velocity_to_assign_y = ay*global.timestep
+    ;
+    ;
+    if math.abs(velocity_to_assign_y) < max_vel
+        wall.vel.y(wall_top)=wall.vel.y(wall_top)-velocity_to_assign_y
+    else
+        if velocity_to_assign_y > 0
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)-max_vel
+        else
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)+max_vel
+        endif
+    endif 
+    wall.vel.x(wall_left)=0.0
+    wall.vel.y(wall_bottom)=0.0
+    wall.vel.x(wall_right)=0.0
+    ;    
+end
+;
+def iso_sig ; cont_type 6
+    sy0=sy0+load_rate*(1+math.log(sy0))
+    s_yy=sy0
+    
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+
+    x_req=s_yy*y_t
+    y_req=s_yy*x_w
+   
+    x_cur=wall.force.contact.x(wall_right)
+    y_cur=wall.force.contact.y(wall_top)
+    x_cur2=math.abs(wall.force.contact.x(wall_left))
+    y_cur2=math.abs(wall.force.contact.y(wall_bottom))
+    ax=(x_req-x_cur)/(masse * mass_multiplier_x)
+    ay=(y_req-y_cur)/(masse * mass_multiplier_y)
+   
+    ax2=(x_req-x_cur2)/(masse * mass_multiplier_x)
+    ay2=(y_req-y_cur2)/(masse * mass_multiplier_y)
+    
+    velocity_to_assign_x = ax*global.timestep
+    velocity_to_assign_y = ay*global.timestep
+    velocity_to_assign_x2=ax2*global.timestep
+    velocity_to_assign_y2=ay2*global.timestep
+    ;
+    if math.abs(velocity_to_assign_x) < max_vel
+        wall.vel.x(wall_right)=wall.vel.x(wall_right)-velocity_to_assign_x
+    else
+        if velocity_to_assign_x > 0
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)-max_vel
+        else
+            wall.vel.x(wall_right)=wall.vel.x(wall_right)+max_vel
+        endif
+    endif
+    ;
+    if math.abs(velocity_to_assign_y) < max_vel
+        wall.vel.y(wall_top)=wall.vel.y(wall_top)-velocity_to_assign_y
+    else
+        if velocity_to_assign_y > 0
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)-max_vel
+        else
+            wall.vel.y(wall_top)=wall.vel.y(wall_top)+max_vel
+        endif
+    endif 
+    ;
+    if math.abs(velocity_to_assign_x2) < max_vel
+        wall.vel.x(wall_left)=wall.vel.x(wall_left)+velocity_to_assign_x2
+    else
+        if velocity_to_assign_x2 > 0
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)+max_vel
+        else
+            wall.vel.x(wall_left)=wall.vel.x(wall_left)-max_vel
+        endif
+    endif 
+    ;
+    if math.abs(velocity_to_assign_y2) < max_vel
+        wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)+velocity_to_assign_y2
+    else
+        if velocity_to_assign_y2 > 0
+            wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)+max_vel
+        else
+            wall.vel.y(wall_bottom)=wall.vel.y(wall_bottom)-max_vel
+        endif
+    endif 
+    ;
+end
+;
+def undrained_z ; cont_type 7
+
+    x_w=width+wall.rotation.center.x(wall_right)-wall.rotation.center.x(wall_left)
+    y_t=height+wall.rotation.center.y(wall_top)-wall.rotation.center.y(wall_bottom)
+    
+    wall.vel.y(wall_top)=-aly*load_rate
+    wall.vel.y(wall_bottom)=0.0
+    wall.vel.x(wall_right)=-x_w/(y_t)*(wall.vel.y(wall_top))
+    wall.vel.x(wall_left)=0.0
+    
+end
+
+[cont_type=0]
+def control
+   if cont_type = 1 then
+      command
+        fish callback add @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback remove @undrained_z -11 
+      end_command
+   end_if
+   if cont_type = 2 then
+      command
+        fish callback remove @eps_eps -11
+        fish callback add @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback remove @undrained_z -11 
+      end_command
+   end_if
+   if cont_type = 3 then
+      command
+        fish callback remove @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback add @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback remove @undrained_z -11 
+      end_command
+   end_if
+   if cont_type = 4 then
+      command
+        fish callback remove @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback add @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback remove @undrained_z -11 
+      end_command
+   end_if
+   if cont_type = 5 then
+      command
+        fish callback remove @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback add @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback remove @undrained_z -11 
+      end_command
+   end_if
+   if cont_type = 6 then
+         command
+        fish callback remove @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback add @iso_sig -11 
+        fish callback remove @undrained_z -11 
+         end_command
+   end_if
+   if cont_type = 7 then
+            command
+        fish callback remove @eps_eps -11
+        fish callback remove @sig_sig -11 
+        fish callback remove @eps_sig -11 
+        fish callback remove @edo_eps -11 
+        fish callback remove @edo_sig -11 
+        fish callback remove @iso_sig -11 
+        fish callback add @undrained_z -11 
+            end_command
+   end_if
+end
