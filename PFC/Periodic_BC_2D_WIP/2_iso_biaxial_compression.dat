@@ -31,21 +31,40 @@ fish list callbacks
 [alx = 1]
 [aly = 1]
 [load_rate=0.005]
-[tsyy = 100.0]
-[tsxx = 100.0]
+[tsyy = 39.2]
+[tsxx = 39.2]
 
 
 def stop_iso_compression
-if math.abs(tsxx-sxx)<1.0
+if math.abs(tsxx-sxx)<0.1
 return True
 endif
 end
 
 model solve fish-halt @stop_iso_compression
-ret
-[y_compression = 1e-1]
+model save 'iso_compression_392.sav'
+[y_compression = 5.0e-3]
+;[update_domain = 1]
 history purge
-cy 10000000
+;model mechanical timestep fix 5e-6
+;cy [0.2/5e-4/5e-6]
+
+[curr_eps = 0]
+def save_steps
+if eps_y * 100-curr_eps>2.5
+fname = string(math.floor(eps_y*100))+'.sav'
+command
+model save @fname
+endcommand
+curr_eps = eps_y*100
+endif
+
+end
+
+fish callback add @save_steps -1
+
+
+model solve time [0.2/y_compression]
 ret
 ;@export_rblock_rotations
 ;@write_rblock_mech(@max_p,@name_file_B,@name_file_H,@name_file_sav)

@@ -1,4 +1,5 @@
 import itasca
+import itasca as it
 itasca.command("python-reset-state false")
 from vec import vec3
 from vec import vec2
@@ -27,7 +28,7 @@ gain_x = 1e-2
 gain_y = 1e-2
 sr_cap = 999
 yrate = 0
-
+it.fish.set('update_domain',0)
 
 
 k_zero = (1.0-math.sin(math.radians(phi)))
@@ -35,6 +36,28 @@ k_zero=0.7
 ts_horiz = tsyy * k_zero
 
 tsxx = ts_horiz
+
+import itasca
+import itasca as it
+itasca.command("python-reset-state false")
+from vec import vec3
+from vec import vec2
+import numpy as np
+import math
+volume_solids = itasca.fish.get('sum')
+def compute_geometry():
+    width_equilibrate = itasca.domain_max_x() - itasca.domain_min_x()
+    thick_equilibrate = itasca.domain_max_y() - itasca.domain_min_y()
+    itasca.fish.set('xmax',itasca.domain_max_x())
+    itasca.fish.set('xmin',itasca.domain_min_x())
+    itasca.fish.set('ymax',itasca.domain_max_y())
+    itasca.fish.set('ymin',itasca.domain_min_y())
+    area_to = width_equilibrate * thick_equilibrate
+    area_le = thick_equilibrate 
+    area_fr = width_equilibrate 
+    vol = area_to 
+    return area_to, area_le, area_fr, vol, width_equilibrate, thick_equilibrate
+    #      0      1        2      3       4        5                  6
 
 def compute_stress():
     w = itasca.domain_max_x() - itasca.domain_min_x()
@@ -55,6 +78,8 @@ def servo_iso_stress(*args):
     global gain_y
     global yrate
   #  global syy
+  #  global width_0
+  #  global thick_0
     global width_equi
     global thick_equi
     global porosity
@@ -88,9 +113,17 @@ def servo_iso_stress(*args):
     #print(ydiff)
     # print(zdiff)
     # print('----')
+    
+    
+  #  bool_update_domain = it.fish.get('update_domain')
+#    if bool_update_domain == 1:
+#        width_0  = compute_geometry()[4]
+#        thick_0  = compute_geometry()[5]
+#        it.fish.set('update_domain',0)
 
     if abs(eps_rate_y) > 0:
         gain_x = max([gain_x,abs(eps_rate_y)*(tsxx*0.1)])
+        gain_x = max([gain_x,10.0])
     p =  (sxx+syy)/2
     q = syy-sxx
     xrate   = xdiff * gain_x
