@@ -1,0 +1,7 @@
+#define MAJOR_VERSION      7
+#define MINOR_VERSION      7
+#define UPDATE_VERSION     1
+#define REVISION_VERSION   1
+#define FILE_DESCRIPTION  "macroelement Contact Model library"
+#define PRODUCT_NAME      "macroelement Contact model dynamic link library"
+#define PRODUCT_VERSION   100

@@ -1,0 +1,66 @@
+model new
+; define domain extent and boundary conditions
+model domain extent -1.0 1.0 ;condition destroy
+program load contactmodelmechanical 'contactmodelmechanical3d_rr_hertz_07_debug.dll'
+
+; set the defaults slots of the CMAT to use the rrlinear contact model
+;contact cmat default model rrlinear ...
+;                            method deformability emod 1e7 kratio 1.0 ...
+;                            property dp_nratio 0.2 dp_mode 3
+
+; create the system and settle under gravity
+[E = 1e7]
+[mu = 0.3]
+[G = 0.5 * E / (1+mu)]
+[r = 5e-3]
+[A = math.pi * r^2]
+
+[kn = 1e8;A * E / r]
+[ks = kn/4;A * G / r]
+
+contact cmat add 1 model linear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'lin' matches 1
+contact cmat add 2 model rrlinear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'rr' matches 1
+contact cmat add 3 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'hzrr' matches 1
+contact cmat add 4 model hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'hz' matches 1
+contact cmat apply
+model clean
+
+wall generate plane
+ball create radius 5e-3 position-z 5e-3 group 'lin'
+ball create radius 5e-3 position-y 2e-2 position-z 5e-3 group 'rr'
+ball create radius 5e-3 position-y 4e-2 position-z 5e-3 group 'hzrr'
+ball create radius 5e-3 position-y 6e-2 position-z 5e-3 group 'hz'
+ball attribute density 2500.0
+model gravity 9.81
+model large-strain on
+model solve
+;ret
+; set up history monitoring
+model mechanical time-total 0.0
+model orientation-tracking on
+model energy mechanical on
+history interval  1
+;model history name "1" mechanical time-total
+;model history name "2" mechanical energy energy-kinetic
+;model history name "3" mechanical energy energy-slip
+;model history name "4" mechanical energy energy-rrslip
+;model history name "5" mechanical energy energy-dashpot
+;model history name "6" mechanical energy energy-strain
+;model history name "7" mechanical energy energy-rrstrain
+;ball history name "11" position-x id 1
+ball history name "1" spin id 1
+ball history name "2" spin id 2
+ball history name "3" spin id 3
+ball history name "4" spin id 4
+ball history name "5" velocity-x id 1
+ball history name "6" velocity-x id 2
+ball history name "7" velocity-x id 3
+ball history name "8" velocity-x id 4
+ball attribute velocity-x 1.0
+;program return
+
+
+; CASE HORIZONTAL-0: no rolling friction
+;contact property fric 0.8
+model solve time 1.5
+ret

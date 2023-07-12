@@ -1,0 +1,37 @@
+model new
+; define domain extent and boundary conditions
+model domain extent -1.0 1.0 ;condition destroy
+program load contactmodelmechanical 'contactmodelmechanical3drrhertz007.dll'
+
+[E = 1e9]
+[mu = 0.3]
+[G = 0.5 * E / (1+mu)]
+[r = 5e-3]
+[A = math.pi * r^2]
+
+[kn = A * E / r]
+[ks = A * G / r]
+
+contact cmat add 1 model linear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'lin' matches 1
+contact cmat add 2 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'hzrr' matches 1
+contact cmat add 3 model hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'hz' matches 1
+contact cmat apply
+model clean
+
+
+wall generate plane
+ball create radius 5e-3 position-y 2e-2 position-z 5e-3 group 'lin'
+ball create radius 5e-3 position-y 4e-2 position-z 5e-3 group 'hzrr'
+ball create radius 5e-3 position-y 6e-2 position-z 5e-3 group 'hz'
+ball attribute density 2500.0
+model gravity 9.81
+model solve
+
+ball fix velocity
+ball attribute velocity-z -1.0e-3
+
+
+ball history name "1" force-contact id 1
+ball history name "2" force-contact id 2
+ball history name "3" force-contact id 3
+model solve time 1.5
