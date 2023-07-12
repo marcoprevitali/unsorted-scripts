@@ -1,3 +1,6 @@
+12/07/2023
+Marco Previtali
+
 Coverted the old Hertzian model with rolling resistance to PFC7. The debug example seems to work (4 spheres with linear and hertizan model, 2 with rolling resistance and 2 without, are pushed on a plane)
 
 The source code and project setup are in
