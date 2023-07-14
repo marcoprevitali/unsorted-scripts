@@ -25,6 +25,7 @@ ball create radius 5e-3 position-y 4e-2 position-z 5e-3 group 'hzrr'
 ball create radius 5e-3 position-y 6e-2 position-z 5e-3 group 'hz'
 ball attribute density 2500.0
 model gravity 9.81
+model large-strain on
 model solve
 
 ball fix velocity

@@ -20,7 +20,7 @@ program load contactmodelmechanical 'contactmodelmechanical3d_rr_hertz_07_debug.
 
 contact cmat add 1 model linear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'lin' matches 1
 contact cmat add 2 model rrlinear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'rr' matches 1
-contact cmat add 3 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'hzrr' matches 1
+contact cmat add 3 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 rs_ratio 10 range group 'hzrr' matches 1
 contact cmat add 4 model hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'hz' matches 1
 contact cmat apply
 model clean

@@ -36,6 +36,7 @@ namespace cmodelsxd {
             , kwResKr
             , kwUserArea
             , kwHzRRMult
+            , kwRSRatio
         };
 
         RR_HERTZ_EXPORT ContactModelRRHertz();
@@ -65,7 +66,8 @@ namespace cmodelsxd {
                 ",rr_moment"
                 ",rr_slip"
                 ",rr_kr"
-                ",user_area";
+                ",user_area"
+                ",rs_ratio";
                 
         }
 
@@ -195,7 +197,9 @@ namespace cmodelsxd {
         void           kr(const double& d) { kr_ = d; }
         const double& fr() const { return fr_; }
         void           fr(const double& d) { fr_ = d; }
-
+        const double& rs_ratio() const { return rs_ratio_; }
+        void           rs_ratio(const double& d) { rs_ratio_ = d; }
+        
         /// Return the total force that the contact model holds.
         virtual DVect    getForce(const IContactMechanical*) const;
 
@@ -262,6 +266,7 @@ namespace cmodelsxd {
 
         double      hn_;                           // normal stiffness coefficient
         double      hs_;                           // shear stiffness coefficient
+        double      rs_ratio_;                     // rolling-shearing stiffness ratio
         DVect2  effectiveTranslationalStiffness_;  // effective stiffness
         DAVect  effectiveRotationalStiffness_;      // (Twisting,Bending,Bending) Rotational stiffness (twisting always 0)
 

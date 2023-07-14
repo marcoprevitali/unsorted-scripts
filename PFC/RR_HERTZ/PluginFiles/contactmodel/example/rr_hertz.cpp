@@ -82,6 +82,7 @@ namespace cmodelsxd {
         , fr_(0.0)
         , userArea_(0.0)
         , rr_hz_mult_(1.0)
+        , rs_ratio_(1.0)
     {
     }
 
@@ -164,7 +165,7 @@ namespace cmodelsxd {
         stream& kr_;
         stream& fr_;
         stream& rr_hz_mult_;
-
+        stream& rs_ratio_;
         if (stream.getArchiveState() == ArchiveStream::Save || stream.getRestoreVersion() >= 2)
             stream& rgap_;
         if (stream.getArchiveState() == ArchiveStream::Save || stream.getRestoreVersion() >= 20)
@@ -192,6 +193,7 @@ namespace cmodelsxd {
         kr(in->kr());
         fr(in->fr());
         rr_hz_mult(in->rr_hz_mult());
+        rs_ratio(in->rs_ratio());
         if (in->hasDamping()) {
             if (!dpProps_)
                 dpProps_ = NEWC(dpProps());
@@ -243,6 +245,7 @@ namespace cmodelsxd {
         case kwResKr:       return kr_;
         case kwUserArea:    return userArea_;
         case kwHzRRMult:	return rr_hz_mult_;
+        case kwRSRatio:     return rs_ratio_;
         }
         assert(0);
         return QVariant();
@@ -417,6 +420,15 @@ namespace cmodelsxd {
             if (val < 0.0)
                 throw Exception("Negative hz_rr_mult not allowed.");
             rr_hz_mult_ = val;
+            return true;
+        }
+        case kwRSRatio: {
+            if (!v.canConvert<double>())
+                throw Exception("rotation-shearing stiffness ratio must be a double.");
+            double val(v.toDouble());
+            if (val < 0.0)
+                throw Exception("Negative rotation-shearing stiffness ratio  not allowed.");
+            rs_ratio_ = val;
             return true;
         }
         }
@@ -664,7 +676,7 @@ namespace cmodelsxd {
 #endif        
                 rbar = r1 / 2.0;
             }
-            kr_ = ks * rbar * rbar;
+            kr_ = rs_ratio_ * ks * rbar * rbar;
             fr_ = res_fric_ * rbar;
         }
 
