@@ -1,7 +1,7 @@
 model new
 ; define domain extent and boundary conditions
 model domain extent -1.0 1.0 ;condition destroy
-program load contactmodelmechanical 'contactmodelmechanical3d_rr_hertz_07_debug.dll'
+program load contactmodelmechanical 'contactmodelmechanical3drrhertz007.dll'
 
 ; set the defaults slots of the CMAT to use the rrlinear contact model
 ;contact cmat default model rrlinear ...
