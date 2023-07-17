@@ -676,7 +676,7 @@ namespace cmodelsxd {
 #endif        
                 rbar = r1 / 2.0;
             }
-            kr_ = rs_ratio_ * ks * rbar * rbar;
+            kr_ =  ks * rs_ratio_ * rbar * rbar;
             fr_ = res_fric_ * rbar;
         }
 
@@ -776,7 +776,7 @@ namespace cmodelsxd {
 //	lin_F_.rdof(i) = sforce.dof(i);
 
 // Rolling resistance
-        kr_ *= rr_hz_mult_;
+        //kr_ *= rr_hz_mult_;
         DAVect res_M_old = res_M_;
         if ((fr_ == 0.0) || (kr_ == 0.0)) {
             res_M_.fill(0.0);

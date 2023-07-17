@@ -20,7 +20,7 @@ program load contactmodelmechanical 'contactmodelmechanical3drrhertz007.dll'
 
 contact cmat add 1 model linear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'lin' matches 1
 contact cmat add 2 model rrlinear property kn @kn ks @ks dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 range group 'rr' matches 1
-contact cmat add 3 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 rr_fric 0.1 rs_ratio 10 range group 'hzrr' matches 1
+contact cmat add 3 model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8  rs_ratio 10 rr_fric 1  range group 'hzrr' matches 1 
 contact cmat add 4 model hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8 range group 'hz' matches 1
 contact cmat apply
 model clean
@@ -31,9 +31,11 @@ ball create radius 5e-3 position-y 2e-2 position-z 5e-3 group 'rr'
 ball create radius 5e-3 position-y 4e-2 position-z 5e-3 group 'hzrr'
 ball create radius 5e-3 position-y 6e-2 position-z 5e-3 group 'hz'
 ball attribute density 2500.0
+ball prop 'rr_fric' 111
+wall prop 'rr_fric' 111
+model clean
 model gravity 9.81
 model large-strain on
-model solve
 ;ret
 ; set up history monitoring
 model mechanical time-total 0.0

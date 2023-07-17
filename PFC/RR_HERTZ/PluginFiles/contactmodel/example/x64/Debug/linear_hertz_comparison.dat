@@ -1,2 +1,36 @@
 model new
-model domain extent -1 1
+; define domain extent and boundary conditions
+model domain extent -1.0 1.0 ;condition destroy
+program load contactmodelmechanical 'contactmodelmechanical3drrhertz007.dll'
+
+; set the defaults slots of the CMAT to use the rrlinear contact model
+;contact cmat default model rrlinear ...
+;                            method deformability emod 1e7 kratio 1.0 ...
+;                            property dp_nratio 0.2 dp_mode 3
+
+; create the system and settle under gravity
+[E = 1e7]
+[mu = 0.3]
+[G = 0.5 * E / (1+mu)]
+[r = 5e-3]
+[A = math.pi * r^2]
+
+[kn = 1e8;A * E / r]
+[ks = kn/4;A * G / r]
+
+contact cmat default model rr_hertz property hz_shear @G hz_poiss @mu dp_nratio 0.2 dp_mode 3 fric 0.8  rs_ratio 1.01 rr_fric 100
+contact cmat apply
+model clean
+
+ball create radius 5e-3 position-x -4.9e-3 group 'hzrr'
+ball create radius 5e-3 position-x 4.9e-3 group 'hzrr'
+
+ball attribute density 2500.0
+ball prop 'rr_fric' 111
+ball fix velocity spin
+ball attribute velocity-y 1e-3 range id 2
+ball attribute spin-z 1e-3 range id 2
+model clean
+model large-strain on
+
+cy 1000

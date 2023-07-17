@@ -67,6 +67,7 @@ namespace cmodelsxd {
                 ",rr_slip"
                 ",rr_kr"
                 ",user_area"
+                ",rr_hz_mult_"
                 ",rs_ratio";
                 
         }

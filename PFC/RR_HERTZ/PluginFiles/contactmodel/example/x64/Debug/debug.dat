@@ -1,0 +1,31 @@
+model new
+model random 565656
+MODEL LARGE-STRAIN on
+program load contactmodelmechanical 'contactmodelmechanical3d_rr_hertz_07_debug.dll' 
+
+
+
+model domain extent -1.0 1.0 ;condition destroy
+ball create radius 5e-3 position-z 5e-3 
+ball create radius 5e-3 position-z -4.99e-3
+
+
+contact cmat default type ball-ball model rr_hertz property 'hz_shear' 8e5 'hz_poiss' 0.3 'fric' 0.05 'rr_fric' 0.1 'rs_ratio' 4 inheritance 'rr_fric' on
+contact cmat apply
+
+ball attribute density 2.5
+ball fix vel
+cyc 1
+
+ball att vel-x 1e-2 ran id 1
+
+cyc 1
+ret
+model sav 'cyc1'
+
+cyc 2
+model sav 'cyc2'
+
+cyc 1
+cyc 1
+model sav 'cyc1+1'
