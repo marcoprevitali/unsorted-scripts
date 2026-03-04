@@ -1,3 +1,6 @@
+04/03/2026
+Removed all unrelated Itasca files from the folder, just leaving the source code, the compiled dll (Release) and some example scripts to verify the model. The youtube video (https://youtu.be/TZUDU_Ggcxg) can still be used as reference if you are trying to make edits or debug it.
+
 12/07/2023
 Marco Previtali
 
