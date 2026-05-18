@@ -1,9 +1,3 @@
 This is an example code to generate a FCC crystal in periodic space and then shear it.
 
-Note: the code requires to modify particle.h in the source code of mechsys:
-
-Line 111:
-  //  bool   IsFree             () {return (!vxf&&!vyf&&!vzf&&!wxf&&!wyf&&!wzf)||FixFree;};                       ///< Ask if the particle has any constrain in its movement
-    bool   IsFree             () {return (!vxf&&!vyf&&!vzf)||FixFree;};                       ///< Ask if the particle has any constrain in its movement
-
-so that fixed-rotation are still considered free particles for cross-boundary contact detection
+the fixfree method is used to let contacts develop across the perioic boundaries (i.e. free particles) despite their fixity status
