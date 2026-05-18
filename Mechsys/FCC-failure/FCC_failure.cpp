@@ -280,6 +280,10 @@ int main(int argc, char **argv) try
         dom.Particles[i]->wxf     = true;
         dom.Particles[i]->wyf     = true;
         dom.Particles[i]->wzf     = true;
+
+		// tell the system to consider the particle free for the periodic BCs, even if it has fixed DOFs
+		dom.Particles[i]->FixFree = true;
+
     }
     
     dom.BoundingBox(Xmin,Xmax);
