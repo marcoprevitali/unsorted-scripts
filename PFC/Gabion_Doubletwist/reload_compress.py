@@ -74,15 +74,36 @@ def assign_mesh_contact_stiffness(map_stiffness, compressive_ratio):
 
 cmd("python-reset-state false")
 cmd("model restore '"+str(RESTORE_MODEL_NAME)+"'")
+
+# Do not inherit the wall-limit callback when this script is executed in the
+# same PFC Python session as the generation script.
+try:
+    it.remove_callback("enforce_lateral_wall_limits", -11.0)
+except Exception:
+    pass
+
 cmd("model mechanical active on")
 cmd("model large-strain on")
 cmd("wall attribute velocity-x 0 velocity-y 0 velocity-z 0")
 
+if not list(it.ball.list()):
+    raise RuntimeError("The restored model contains no mesh balls")
+if not list(it.rblock.list()):
+    raise RuntimeError("The restored model contains no rblocks")
 
 map_updated_mesh_contacts = assign_mesh_contact_stiffness(
     map_mesh_tensile_stiffness,
     MESH_COMPRESSIVE_STIFFNESS_RATIO,
 )
+missing_mesh_contact_types = [
+    contact_type for contact_type, count in map_updated_mesh_contacts.items()
+    if count == 0
+]
+if missing_mesh_contact_types:
+    raise RuntimeError(
+        "The restored model has no linearpbond contacts in groups: "+
+        ", ".join(missing_mesh_contact_types)
+    )
 print("Assigned mesh contact stiffness:")
 for contact_type, tensile_stiffness in map_mesh_tensile_stiffness.items():
     compressive_stiffness = MESH_COMPRESSIVE_STIFFNESS_RATIO * tensile_stiffness
@@ -96,12 +117,17 @@ for contact_type, tensile_stiffness in map_mesh_tensile_stiffness.items():
 support_walls = []
 for wall in it.wall.list():
     if wall.in_group("supportwall"):
-            support_walls.append(wall)
+        support_walls.append(wall)
 
-
-
+if len(support_walls) != 1:
+    raise RuntimeError(
+        "Expected one wall in group 'supportwall', found "+
+        str(len(support_walls))
+    )
 support_wall = support_walls[0]
 support_vertices = list(support_wall.vertices())
+if len(support_vertices) < 3:
+    raise RuntimeError("The support wall does not contain a valid polygon")
 
 platen_x_min = min(float(vertex.pos()[0]) for vertex in support_vertices)
 platen_x_max = max(float(vertex.pos()[0]) for vertex in support_vertices)
@@ -134,6 +160,10 @@ end
 rblock_top = float(it.fish.get("reload_rblock_top"))
 specimen_top = max(ball_top, rblock_top)
 initial_specimen_height = specimen_top - support_z
+if initial_specimen_height <= 0.0:
+    raise RuntimeError(
+        "Invalid restored specimen height: "+str(initial_specimen_height)
+    )
 
 
 platen_z = specimen_top + PLATEN_INITIAL_GAP

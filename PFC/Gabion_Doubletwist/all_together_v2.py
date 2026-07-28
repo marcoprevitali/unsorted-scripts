@@ -14,8 +14,9 @@ TARGET_PRESSURE = 50.0 # low lateral pressure to have a square geometry that doe
 SERVO_GAIN_FACTOR = 0.5
 SERVO_VELOCITY_MAX = 0.01
 
-PRESSURE_CONTROL_CYCLES = 200000
-FIXED_SETTLE_CYCLES = 50000
+PRESSURE_CONTROL_CYCLES = 20000
+
+FIXED_SETTLE_CYCLES = 5000
 FIXED_SETTLE_CALM = 500
 
 # calculating the box dimension after compression
@@ -44,8 +45,8 @@ RBLOCK_KRATIO = 4.0
 RBLOCK_ROUNDING = 0.5 # how much the rblock boundaries are rounded. just keep it as it is or check the manual
 
 DILATION_CYCLES = 500 # number of cycles between each rblock dilation
-FINAL_SETTLE_CYCLES = 500000
-FINAL_SETTLE_CALM = 1000
+FINAL_SETTLE_CYCLES = 5000
+FINAL_SETTLE_CALM = 100
 RBLOCK_MESH_FRICTION = 0.5 * RBLOCK_FRICTION_FINAL
 SUPPORT_WALL_FRICTION = 0.0 # increase if the rblocks are just sliding off
 SUPPORT_WALL_EMOD = 300.0e6
@@ -239,6 +240,28 @@ support_limits = (
     max(float(vertex.pos()[1]) for vertex in support_vertices),
 )
 limited_walls = (x_min_wall, x_max_wall, y_min_wall, y_max_wall)
+
+def enforce_lateral_wall_limits(*args):
+    support_x_min, support_x_max, support_y_min, support_y_max = support_limits
+    checks = (
+        (limited_walls[0], 0, support_x_min, -1),
+        (limited_walls[1], 0, support_x_max, 1),
+        (limited_walls[2], 1, support_y_min, -1),
+        (limited_walls[3], 1, support_y_max, 1),
+    )
+    for wall, axis, limit, outward_sign in checks:
+        pos = [float(value) for value in wall.pos()]
+        outside = pos[axis] < limit if outward_sign < 0 else pos[axis] > limit
+        if not outside:
+            continue
+        pos[axis] = limit
+        wall.set_pos(tuple(pos))
+        velocity = [float(value) for value in wall.vel()]
+        if velocity[axis] * outward_sign > 0.0:
+            velocity[axis] = 0.0
+            wall.set_vel(tuple(velocity))
+
+
 it.set_callback("enforce_lateral_wall_limits", -11.0)
 
 
@@ -286,47 +309,41 @@ for dilation_step in range(1, NUM_DILATION_STEPS + 1):
 
 it.command("model clean all")
 it.fish.set("fric", RBLOCK_FRICTION_FINAL)
-it.command("contact cmat default type rblock-facet model linear method deformability ...\n"+
-           "    emod "+str(RBLOCK_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_wall\n"+
-           "contact cmat default type rblock-rblock model linear method deformability ...\n"+
-           "    emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric\n"+
-           "contact cmat default model linear method deformability ...\n"+
-           "    emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric\n"+
-           "contact cmat apply\n"+
-           "contact property fric @fric range contact type 'rblock-rblock'\n"+
-           "contact property fric @fric_wall range contact type 'rblock-facet'\n"+
-           "model clean all")
+it.fish.set("fric_wall", WALL_FRICTION)
+
+it.command("contact cmat default type rblock-facet model linear method deformability emod "+str(RBLOCK_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_wall")
+it.command("contact cmat default type rblock-rblock model linear method deformability emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric")
+it.command("contact cmat default model linear method deformability emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric")
+it.command("contact cmat apply")
+it.command("contact property fric @fric range contact type 'rblock-rblock'")
+it.command("contact property fric @fric_wall range contact type 'rblock-facet'")
+it.command("model clean all")
 it.command("model cycle "+str(FINAL_SETTLE_CYCLES)+" calm "+str(FINAL_SETTLE_CALM))
 solid_vol = sum(rb.vol() for rb in it.rblock.list())
-print("Rblock generation complete; porosity="+str(1.0 - solid_vol / total_vol))
+print("rblock generation complete; porosity:"+str(1.0 - solid_vol / total_vol))
 it.command("model save 'rblocks_generated_v2.sav'")
 
 
-# Continue pressure control in fixed-size blocks.
-remaining_cycles = PRESSURE_CONTROL_CYCLES
-pressure_block = 0
-while remaining_cycles > 0:
-    pressure_block += 1
-    block_cycles = min(remaining_cycles, PRESSURE_REFRESH_CYCLES)
-    current_x_min = float(x_min_wall.pos()[0])
-    current_x_max = float(x_max_wall.pos()[0])
-    current_y_min = float(y_min_wall.pos()[1])
-    current_y_max = float(y_max_wall.pos()[1])
-    current_height = max(float(top_wall.pos()[2]), 1.0e-6)
-    force_x = TARGET_PRESSURE * max(current_y_max - current_y_min, 1.0e-6) * current_height
-    force_y = TARGET_PRESSURE * max(current_x_max - current_x_min, 1.0e-6) * current_height
-    force_z = TARGET_PRESSURE * max(current_x_max - current_x_min, 1.0e-6) * max(current_y_max - current_y_min, 1.0e-6)
-    it.command("wall servo force-x  "+str(force_x)+" "+servo_text+" range id "+str(x_min_id))
-    it.command("wall servo force-x -"+str(force_x)+" "+servo_text+" range id "+str(x_max_id))
-    it.command("wall servo force-y  "+str(force_y)+" "+servo_text+" range id "+str(y_min_id))
-    it.command("wall servo force-y -"+str(force_y)+" "+servo_text+" range id "+str(y_max_id))
-    it.command("wall servo force-z -"+str(force_z)+" "+servo_text+" range id "+str(top_id))
-    it.command("model cycle "+str(block_cycles)+" calm "+str(FIXED_SETTLE_CALM))
-    remaining_cycles -= block_cycles
+# Apply one final pressure-control stage using the post-dilation box dimensions.
+current_x_min = float(x_min_wall.pos()[0])
+current_x_max = float(x_max_wall.pos()[0])
+current_y_min = float(y_min_wall.pos()[1])
+current_y_max = float(y_max_wall.pos()[1])
+current_height = max(float(top_wall.pos()[2]), 1.0e-6)
+force_x = TARGET_PRESSURE * max(current_y_max - current_y_min, 1.0e-6) * current_height
+force_y = TARGET_PRESSURE * max(current_x_max - current_x_min, 1.0e-6) * current_height
+force_z = TARGET_PRESSURE * max(current_x_max - current_x_min, 1.0e-6) * max(current_y_max - current_y_min, 1.0e-6)
+it.command("wall servo force-x  "+str(force_x)+" "+servo_text+" range id "+str(x_min_id))
+it.command("wall servo force-x -"+str(force_x)+" "+servo_text+" range id "+str(x_max_id))
+it.command("wall servo force-y  "+str(force_y)+" "+servo_text+" range id "+str(y_min_id))
+it.command("wall servo force-y -"+str(force_y)+" "+servo_text+" range id "+str(y_max_id))
+it.command("wall servo force-z -"+str(force_z)+" "+servo_text+" range id "+str(top_id))
+it.command("model cycle "+str(PRESSURE_CONTROL_CYCLES)+" calm "+str(FIXED_SETTLE_CALM))
 
 
 it.command("wall servo activate off")
 it.command("wall attribute velocity-x 0 velocity-y 0 velocity-z 0")
+it.remove_callback("enforce_lateral_wall_limits", -11.0)
 it.command("model cycle "+str(FIXED_SETTLE_CYCLES)+" calm "+str(FIXED_SETTLE_CALM))
 it.command("model clean all")
 it.command("model save 'rblocks_low_pressure_settled_v2.sav'")
@@ -356,6 +373,14 @@ end
 [measure_rblock_vertex_bounds_v2]
 """)
 
+vertex_bounds = (
+    float(it.fish.get("rb_vxmin")),
+    float(it.fish.get("rb_vxmax")),
+    float(it.fish.get("rb_vymin")),
+    float(it.fish.get("rb_vymax")),
+    float(it.fish.get("rb_vzmin")),
+    float(it.fish.get("rb_vzmax")),
+)
 
 top_facet_count = len(list(top_wall.facets()))
 top_wall.delete()
@@ -372,18 +397,14 @@ current_x_min = (x_min_wall.pos()[0])
 current_x_max = (x_max_wall.pos()[0])
 current_y_min = (y_min_wall.pos()[1])
 current_y_max = (y_max_wall.pos()[1])
-mesh_bounds = (
-    current_x_min - NET_BALL_RADIUS - MESH_INSERTION_CLEARANCE,
-    current_x_max + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE,
-    current_y_min - NET_BALL_RADIUS - MESH_INSERTION_CLEARANCE,
-    current_y_max + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE,
-    NET_BALL_RADIUS,
-    vertex_bounds[5] + insertion_lift + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE,
-)
+mx0 = current_x_min - NET_BALL_RADIUS - MESH_INSERTION_CLEARANCE
+mx1 = current_x_max + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE
+my0 = current_y_min - NET_BALL_RADIUS - MESH_INSERTION_CLEARANCE
+my1 = current_y_max + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE
+mz0 = NET_BALL_RADIUS
+mz1 = vertex_bounds[5] + insertion_lift + NET_BALL_RADIUS + MESH_INSERTION_CLEARANCE
 
-# Build the six-face mesh graph directly. Shared box edges use shared balls.
-
-mx0, mx1, my0, my1, mz0, mz1 = mesh_bounds
+# Build the six-face mesh graph. Shared box edges use shared balls.
 mcx = 0.5 * (mx0 + mx1)
 mcy = 0.5 * (my0 + my1)
 mcz = 0.5 * (mz0 + mz1)
@@ -649,21 +670,18 @@ it.command("contact delete range group 'delete' contact type 'ball-ball'")
 it.fish.set("fric_fill", RBLOCK_FRICTION_FINAL)
 it.fish.set("fric_mesh", RBLOCK_MESH_FRICTION)
 it.fish.set("fric_support", SUPPORT_WALL_FRICTION)
-it.command("contact cmat default type rblock-rblock model linear method deformability ...\n"+
-           "    emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_fill\n"+
-           "contact cmat default type ball-rblock model linear method deformability ...\n"+
-           "    emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_mesh\n"+
-           "contact cmat apply range contact type 'rblock-rblock'\n"+
-           "contact cmat apply range contact type 'ball-rblock'\n"+
-           "contact property fric @fric_fill range contact type 'rblock-rblock'\n"+
-           "contact property fric @fric_mesh range contact type 'ball-rblock'\n"+
-           "contact cmat default type ball-facet model linear method deformability ...\n"+
-           "    emod "+str(SUPPORT_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_support\n"+
-           "contact cmat default type rblock-facet model linear method deformability ...\n"+
-           "    emod "+str(SUPPORT_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_support\n"+
-           "contact cmat apply range contact type 'ball-facet'\n"+
-           "contact cmat apply range contact type 'rblock-facet'\n"+
-           "model clean all")
+it.command("contact cmat default type rblock-rblock model linear method deformability emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_fill")
+it.command("contact cmat default type ball-rblock model linear method deformability emod "+str(RBLOCK_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_mesh")
+it.command("contact cmat apply range contact type 'rblock-rblock'")
+it.command("contact cmat apply range contact type 'ball-rblock'")
+
+it.command("contact property fric @fric_fill range contact type 'rblock-rblock'")
+it.command("contact property fric @fric_mesh range contact type 'ball-rblock'")
+it.command("contact cmat default type ball-facet model linear method deformability emod "+str(SUPPORT_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_support")
+it.command("contact cmat default type rblock-facet model linear method deformability emod "+str(SUPPORT_WALL_EMOD)+" kratio "+str(RBLOCK_KRATIO)+" property fric @fric_support")
+it.command("contact cmat apply range contact type 'ball-facet'")
+it.command("contact cmat apply range contact type 'rblock-facet'")
+it.command("model clean all")
 it.command("rblock attribute damp "+str(RBLOCK_DAMP)+" range group 'fill_rblocks'")
 it.command("rblock free velocity spin range group 'fill_rblocks'")
 
