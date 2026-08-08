@@ -1,3 +1,5 @@
-This is an example code to generate a FCC crystal in periodic space and then shear it.
+This is an example code to generate a FCC crystal in periodic space and then shear it, replicating the model presented in Thornton, C. (1979). The conditions for failure of a face-centered cubic array of uniform rigid spheres. Géotechnique, 29(4), 441-459. https://doi.org/10.1680/geot.1979.29.4.441
 
-the fixfree method is used to let contacts develop across the perioic boundaries (i.e. free particles) despite their fixity status
+The model only really works with periodic boundaries since the use of flat plates changes the coordination number, reducing the number of contacts for each particle near the borders.
+
+The fixfree method is used to let contacts develop across the perioic boundaries (i.e. free particles) despite their fixity status.
